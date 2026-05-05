@@ -19,3 +19,21 @@ models:
         data_tests:
           - unique
           - not_null
+
+  - name: rainbow_colors
+    description: "The seven colors of the rainbow with position and hex code"
+    columns:
+      - name: position
+        description: "Order of the color in the rainbow (1-7)"
+        data_tests:
+          - unique
+          - not_null
+      - name: name
+        description: "Common name of the color"
+        data_tests:
+          - unique
+          - not_null
+      - name: hex
+        description: "Hex color code"
+        data_tests:
+          - not_null
