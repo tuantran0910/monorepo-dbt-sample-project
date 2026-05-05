@@ -1,0 +1,14 @@
+[project]
+name = "testdbtgithubactions"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dbt-core==1.11.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "projects/rainbow_dbt_duckdb",
+]

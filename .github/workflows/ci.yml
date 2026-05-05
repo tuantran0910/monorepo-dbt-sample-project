@@ -1,0 +1,67 @@
+name: 🧪 CI
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+    branches:
+      - develop
+      - main
+jobs:
+  detect-projects:
+    name: Detect changed dbt projects
+    runs-on: github-runner
+    permissions:
+      contents: read
+    outputs:
+      projects: ${{ steps.build-project-matrix.outputs.projects }}
+      any_changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed files under projects/
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: projects/**
+          dir_names: true
+          dir_names_max_depth: 2
+          matrix: true
+
+      - name: Build project matrix
+        id: build-project-matrix
+        env:
+          CHANGED_DIRS: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          PROJECTS=$(jq -c '[.[] | sub("^projects/"; "")]' <<< "$CHANGED_DIRS")
+          echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
+          echo "Changed dbt projects: $PROJECTS"
+
+  test:
+    name: Test parsing dbt project (${{ matrix.project }})
+    needs: detect-projects
+    if: ${{ needs.detect-projects.outputs.any_changed == 'true' }}
+    runs-on: github-runner
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.detect-projects.outputs.projects) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.9"
+          enable-cache: true
+
+      - name: Sync project dependencies
+        run: uv sync --package ${{ matrix.project }}
+
+      - name: Test models parsing and compilation
+        working-directory: projects/${{ matrix.project }}
+        run: uv run dbt deps && uv run dbt ls --profiles-dir . --output json
